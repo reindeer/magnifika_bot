@@ -117,7 +117,6 @@ func (m *botManagement) Setup(ctx context.Context, token string) error {
 			} else {
 				response = fmt.Sprintf("%s: %s", WelcomeAgainPhrase, phone)
 			}
-
 		case msg == EmergenceShortcut, msg == DispatcherShortcut, msg == GuardShortcut:
 			phone, ok := m.phones[msg]
 			if !ok {

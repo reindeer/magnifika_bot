@@ -36,7 +36,7 @@ func (r *customerRepository) PhoneForCustomer(ctx context.Context, id int64) (st
 func (r *customerRepository) SaveCustomer(ctx context.Context, id int64, phone string) error {
 	ctx, commit, rollback := r.Begin(ctx)
 	defer rollback()
-	_, err := sql.Exec(ctx, builder.NewSqlite(`insert into customers (customer_id, phone) values (?, ?)`, &[]any{id, phone}))
+	_, err := sql.Exec(ctx, builder.NewSqlite(`insert into customers (customer_id, phone) values (?, ?) on conflict (customer_id) do update set phone=?`, &[]any{id, phone, phone}))
 	if err != nil {
 		return err
 	}
