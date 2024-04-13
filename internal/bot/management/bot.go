@@ -99,6 +99,9 @@ func (m *botManagement) Setup(ctx context.Context) error {
 	var contactsBlockedBefore time.Time
 
 	b, err := bot.New(m.token, bot.WithDefaultHandler(func(ctx context.Context, b *bot.Bot, update *models.Update) {
+		if update.Message == nil {
+			return
+		}
 		var response string
 		defer func() {
 			if response != "" {
