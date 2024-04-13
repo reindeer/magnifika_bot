@@ -83,20 +83,14 @@ func (a *adapter) Init(ctx context.Context) error {
 }
 
 func (a *adapter) Application(ctx context.Context, phone, plate string, gates []string) error {
-	readRange := fmt.Sprintf("%s!D1:E", time.Now().Format("02.01"))
-	resp, err := a.service.Spreadsheets.Values.Get(a.sheetId, readRange).Do()
-	if err != nil {
-		return err
-	}
-
 	valueRange := &sheets.ValueRange{
 		Values: [][]interface{}{
 			{phone, plate, strings.Join(gates, "\n")},
 		},
 	}
 
-	writeRange := fmt.Sprintf("%s!D%d:F%d", time.Now().Format("02.01"), len(resp.Values)+1, len(resp.Values)+2)
-	_, err = a.service.Spreadsheets.Values.Append(a.sheetId, writeRange, valueRange).
+	writeRange := fmt.Sprintf("%s!D:D", time.Now().Format("02.01"))
+	_, err := a.service.Spreadsheets.Values.Append(a.sheetId, writeRange, valueRange).
 		ValueInputOption("RAW").
 		Context(ctx).
 		Do()
