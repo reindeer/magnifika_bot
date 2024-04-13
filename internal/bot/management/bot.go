@@ -214,17 +214,17 @@ func (m *botManagement) init(ctx context.Context) error {
 		return err
 	}
 
-	phones := make(map[string]string, 3)
-	phones[EmergenceShortcut], err = m.registry.Get(ctx, EmergenceShortcut)
+	m.phones = make(map[string]string, 3)
+	m.phones[EmergenceShortcut], err = m.registry.Get(ctx, EmergenceShortcut)
 	if err != nil {
 		return err
 	}
-	phones[DispatcherShortcut], err = m.registry.Get(ctx, DispatcherShortcut)
+	m.phones[DispatcherShortcut], err = m.registry.Get(ctx, DispatcherShortcut)
 	if err != nil {
 		return err
 	}
 
-	phones[GuardShortcut], err = m.registry.Get(ctx, GuardShortcut)
+	m.phones[GuardShortcut], err = m.registry.Get(ctx, GuardShortcut)
 	if err != nil {
 		return err
 	}
