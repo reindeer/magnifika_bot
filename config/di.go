@@ -3,11 +3,15 @@ package config
 import (
 	"io/fs"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/reindeer/magnifika_bot/internal/adapter/application"
+	"github.com/reindeer/magnifika_bot/internal/adapter/phone"
+	"github.com/reindeer/magnifika_bot/internal/adapter/registry"
+	"github.com/reindeer/magnifika_bot/internal/bot/cmd/configure"
 	migrateCommand "github.com/reindeer/magnifika_bot/internal/bot/cmd/migrate"
 	"github.com/reindeer/magnifika_bot/internal/bot/cmd/serve"
 	"github.com/reindeer/magnifika_bot/internal/bot/management"
 	"github.com/reindeer/magnifika_bot/internal/bot/repository"
+	"github.com/reindeer/magnifika_bot/pkg/authenticator"
 
 	"gitlab.com/gorib/di"
 	"gitlab.com/gorib/env"
@@ -39,19 +43,35 @@ func InitDi() {
 		0: "sqlite3",
 		1: "bot.sqlite",
 	}))
-	di.Wire[management.OperatingManagement](management.NewTst)
+
+	di.Define(authenticator.New,
+		di.Alias[phone.Authenticator](),
+		di.Alias[application.Authenticator](),
+	)
+
+	di.Define(registry.NewAdapter,
+		di.Alias[serve.Registry](),
+		di.Alias[configure.Registry](),
+		di.Alias[phone.Registry](),
+		di.Alias[application.Registry](),
+		di.Alias[management.Registry](),
+	)
+
+	di.Define(phone.NewAdapter,
+		di.Alias[management.PhoneAdapter](),
+	)
+
+	di.Define(application.NewAdapter,
+		di.Alias[management.ApplicationAdapter](),
+	)
+
 	di.Wire[management.CustomerRepository](repository.NewCustomerRepository)
-	di.Wire[serve.BotManagement](management.NewBotManagement, di.Defaults(map[int]any{
-		0: map[string]string{
-			management.EmergenceShortcut:  env.NeedValue[string]("EMERGENCY_CONTACT"),
-			management.DispatcherShortcut: env.NeedValue[string]("DISPATCHER_CONTACT"),
-			management.GuardShortcut:      env.NeedValue[string]("GUARD_CONTACT"),
-		},
-	}))
+	di.Wire[serve.BotManagement](management.NewBotManagement)
 	di.Wire[app.BaseCommand](func() app.BaseCommand { return app.NewCommand("bot:serve", "Start the bot") }, di.For[serve.Command]())
-	di.Wire[serve.Command](serve.New, di.Tag(app.CommandTag), di.Defaults(map[int]any{
-		0: env.Value("BOT_TOKEN", ""),
-	}))
+	di.Wire[serve.Command](serve.New, di.Tag(app.CommandTag))
+
+	di.Wire[app.BaseCommand](func() app.BaseCommand { return app.NewCommand("configure", "Configure bot parameters") }, di.For[configure.Command]())
+	di.Wire[configure.Command](configure.New, di.Tag(app.CommandTag))
 
 	di.Wire[fs.FS](migrateCommand.NewMigrations, di.For[migrate.MigrateCommand]())
 	migrate.InitMigrate()

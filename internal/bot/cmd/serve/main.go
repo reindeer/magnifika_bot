@@ -22,22 +22,26 @@ type handler struct {
 }
 
 type BotManagement interface {
-	Setup(ctx context.Context, token string) error
+	Setup(ctx context.Context) error
 }
 
-func New(token string, base app.BaseCommand, management BotManagement) *command {
+type Registry interface {
+	Get(ctx context.Context, code string) (string, error)
+}
+
+func New(base app.BaseCommand, management BotManagement, registry Registry) *command {
 	return &command{
 		BaseCommand: base,
 		management:  management,
-		token:       token,
+		registry:    registry,
 	}
 }
 
 type command struct {
 	app.BaseCommand
 	management BotManagement
+	registry   Registry
 	logger     pry.Logger
-	token      string
 	cancel     func()
 }
 
@@ -48,25 +52,20 @@ func (c *command) Run(ctx context.Context) error {
 	}
 
 	ctx, c.cancel = context.WithCancel(ctx)
-	return c.management.Setup(ctx, c.token)
+	return c.management.Setup(ctx)
 }
 
 func (c *command) Usage() error {
 	var (
-		help  bool
-		token string
+		help bool
 	)
 	getopt.FlagLong(&help, "help", 'h', "Display this help message")
-	getopt.FlagLong(&token, "token", 't', "Token to access the Telegram API")
 	getopt.Parse()
 	if help {
 		getopt.SetParameters("")
 		_, _ = os.Stderr.WriteString(c.Description() + "\n")
 		getopt.PrintUsage(os.Stderr)
 		os.Exit(2)
-	}
-	if token != "" {
-		c.token = token
 	}
 	return nil
 }

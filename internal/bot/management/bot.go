@@ -33,7 +33,7 @@ const (
 	UnknownPhrase              = "Извини, папа запрещает мне разговаривать с незнакомцами. Пришли мне свой номер телефона, зарегистрированный в УК."
 	UnknownTelegramErrorPhrase = "Telegram говорит что-то мне непонятное. Спроси папу @tarandro, может быть от знает."
 	ApplicationFailedPhrase    = "Все было хорошо, но УК твою заявку не приняла. Не знаю, почему. Спроси папу @tarandro, он знает."
-	ApplicationSentPhrase      = "Готово! Заявку отправил.\nНе забудь, что въезжать можно только с Магнитогорской улицы."
+	ApplicationSentPhrase      = "Готово! Заявку отправил."
 	WaitForPlatePhrase         = "Скажи, кого надо пропустить, и я передам дальше.\nМне нужен полный номер с регионом.\nНапример а000аа78."
 )
 
@@ -42,59 +42,63 @@ type CustomerRepository interface {
 	SaveCustomer(ctx context.Context, id int64, phone string) error
 }
 
-type OperatingManagement interface {
-	ValidatePhone(ctx context.Context, phone string) error
-	Application(ctx context.Context, phone, plate string) error
+type PhoneAdapter interface {
+	Init(ctx context.Context) error
+	ValidatePhone(ctx context.Context, phone string) ([]string, error)
 }
 
-func NewTst() *tst {
-	return &tst{}
+type ApplicationAdapter interface {
+	Init(ctx context.Context) error
+	Application(ctx context.Context, phone, plate string, gates []string) error
 }
 
-type tst struct {
-}
-
-func (t tst) ValidatePhone(ctx context.Context, phone string) error {
-	return nil
-}
-
-func (t tst) Application(ctx context.Context, phone, plate string) error {
-	return nil
+type Registry interface {
+	Get(ctx context.Context, code string) (string, error)
 }
 
 func NewBotManagement(
-	phones map[string]string,
+	registry Registry,
 	repository CustomerRepository,
-	operating OperatingManagement,
+	validator PhoneAdapter,
+	application ApplicationAdapter,
 	logger pry.Logger,
-) *botManagement {
+) (*botManagement, error) {
 	return &botManagement{
-		logger:     logger,
-		repository: repository,
-		operating:  operating,
-		phones:     phones,
-	}
+		logger:      logger,
+		repository:  repository,
+		validator:   validator,
+		application: application,
+		registry:    registry,
+	}, nil
 }
 
 type botManagement struct {
-	logger     pry.Logger
-	repository CustomerRepository
-	operating  OperatingManagement
-	phones     map[string]string
+	logger      pry.Logger
+	repository  CustomerRepository
+	validator   PhoneAdapter
+	application ApplicationAdapter
+	registry    Registry
+	phones      map[string]string
+	token       string
 }
 
-func (m *botManagement) Setup(ctx context.Context, token string) error {
+func (m *botManagement) Setup(ctx context.Context) error {
+	err := m.init(ctx)
+	if err != nil {
+		return err
+	}
+
 	keyboard := &models.ReplyKeyboardMarkup{
 		Keyboard:       [][]models.KeyboardButton{{{Text: ApplicationShortcut}}, {{Text: EmergenceShortcut}}, {{Text: DispatcherShortcut}}, {{Text: GuardShortcut}}},
 		IsPersistent:   true,
 		ResizeKeyboard: true,
 	}
 	plateRe := regexp.MustCompile(`^\s*[а-яА-Яa-zA-Z]\d{3}[а-яА-Яa-zA-Z]{2}\d{2,3}[\s.,]*$`)
-	phoneRe := regexp.MustCompile(`^(8|\+\d)\d{10}$`)
+	phoneRe := regexp.MustCompile(`^\+\d{11}$`)
 
 	var contactsBlockedBefore time.Time
 
-	b, err := bot.New(token, bot.WithDefaultHandler(func(ctx context.Context, b *bot.Bot, update *models.Update) {
+	b, err := bot.New(m.token, bot.WithDefaultHandler(func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		var response string
 		defer func() {
 			if response != "" {
@@ -150,7 +154,7 @@ func (m *botManagement) Setup(ctx context.Context, token string) error {
 			msg = update.Message.Contact.PhoneNumber
 			fallthrough
 		case phoneRe.MatchString(msg):
-			if err := m.operating.ValidatePhone(ctx, msg); err == nil {
+			if gates, err := m.validator.ValidatePhone(ctx, msg); err == nil && len(gates) > 0 {
 				if err = m.repository.SaveCustomer(ctx, update.Message.From.ID, msg); err == nil {
 					response = ReadyForApplicationPhrase
 				} else {
@@ -170,8 +174,8 @@ func (m *botManagement) Setup(ctx context.Context, token string) error {
 				response = UnknownPhrase
 				return
 			}
-			err = m.operating.ValidatePhone(ctx, phone)
-			if err != nil {
+			gates, err := m.validator.ValidatePhone(ctx, phone)
+			if err != nil || len(gates) == 0 {
 				response = PhoneChangedPhrase
 				return
 			}
@@ -179,13 +183,14 @@ func (m *botManagement) Setup(ctx context.Context, token string) error {
 				response = WaitForPlatePhrase
 				return
 			}
-			err = m.operating.Application(ctx, phone, msg)
+			err = m.application.Application(ctx, phone, msg, gates)
 			if err != nil {
 				m.logger.Error(err, pry.Ctx(ctx))
 				response = ApplicationFailedPhrase
 				return
 			}
-			response = ApplicationSentPhrase
+
+			response = fmt.Sprintf("%s\nВъезжать можно через ворота «%s»", ApplicationSentPhrase, strings.Join(gates, "» или «"))
 			return
 		default:
 			m.logger.Trace("Skip unknown message: " + msg)
@@ -196,5 +201,38 @@ func (m *botManagement) Setup(ctx context.Context, token string) error {
 	}
 
 	b.Start(ctx)
+	return nil
+}
+
+func (m *botManagement) init(ctx context.Context) error {
+	err := m.application.Init(ctx)
+	if err != nil {
+		return err
+	}
+	err = m.validator.Init(ctx)
+	if err != nil {
+		return err
+	}
+
+	phones := make(map[string]string, 3)
+	phones[EmergenceShortcut], err = m.registry.Get(ctx, EmergenceShortcut)
+	if err != nil {
+		return err
+	}
+	phones[DispatcherShortcut], err = m.registry.Get(ctx, DispatcherShortcut)
+	if err != nil {
+		return err
+	}
+
+	phones[GuardShortcut], err = m.registry.Get(ctx, GuardShortcut)
+	if err != nil {
+		return err
+	}
+
+	m.token, err = m.registry.Get(ctx, "telegram.token")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

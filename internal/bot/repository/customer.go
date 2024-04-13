@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/reindeer/magnifika_bot/internal/bot/repository/builder"
+	"github.com/reindeer/magnifika_bot/pkg/builder"
 
 	repository "gitlab.com/gorib/storage"
 	"gitlab.com/gorib/storage/sql"
