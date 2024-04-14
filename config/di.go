@@ -50,7 +50,6 @@ func InitDi() {
 	)
 
 	di.Define(registry.NewAdapter,
-		di.Alias[serve.Registry](),
 		di.Alias[configure.Registry](),
 		di.Alias[phone.Registry](),
 		di.Alias[application.Registry](),

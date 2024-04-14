@@ -25,22 +25,16 @@ type BotManagement interface {
 	Setup(ctx context.Context) error
 }
 
-type Registry interface {
-	Get(ctx context.Context, code string) (string, error)
-}
-
-func New(base app.BaseCommand, management BotManagement, registry Registry) *command {
+func New(base app.BaseCommand, management BotManagement) *command {
 	return &command{
 		BaseCommand: base,
 		management:  management,
-		registry:    registry,
 	}
 }
 
 type command struct {
 	app.BaseCommand
 	management BotManagement
-	registry   Registry
 	logger     pry.Logger
 	cancel     func()
 }
