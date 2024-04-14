@@ -24,7 +24,7 @@ const (
 	GuardShortcut       = "Охрана"
 
 	WelcomePhrase              = "Привет! Давай познакомимся! Пришли мне свой номер телефона, зарегистрированный в УК."
-	WelcomeAgainPhrase         = "Привет, рад видеть тебя снова! Если у тебя новый телефон, пришли мне его. Сейчас у меня записан"
+	WelcomeAgainPhrase         = "Привет, рад видеть тебя снова! Если у тебя новый телефон, пришли мне его. Сейчас у меня записан: %s"
 	ReadyForApplicationPhrase  = "Готово! Теперь можешь создавать заявки."
 	OopsPhrase                 = "Ой, кажется я поломался! Позовите папу @tarandro!"
 	NotFoundPhrase             = "УК не может найти тебя в списках. Свяжись с ними или укажи телефон, который зарегистрирован в УК."
@@ -34,7 +34,7 @@ const (
 	UnknownPhrase              = "Ой, что-то я не понял тебя. Что ты имеешь в виду?"
 	UnknownTelegramErrorPhrase = "Telegram говорит что-то мне непонятное. Спроси папу @tarandro, может быть от знает."
 	ApplicationFailedPhrase    = "Все было хорошо, но УК твою заявку не приняла. Не знаю, почему. Спроси папу @tarandro, он знает."
-	ApplicationSentPhrase      = "Готово! Заявку отправил.\nВъезжать можно через ворота «%s»"
+	ApplicationSentPhrase      = "Готово! Заявку отправил.\nВъезжать можно через ворота «%s»."
 	WaitForPlatePhrase         = "Скажи, кого надо пропустить, и я передам дальше.\nМне нужен полный номер с регионом.\nНапример а000аа78."
 )
 
@@ -123,7 +123,7 @@ func (m *botManagement) Setup(ctx context.Context) error {
 			if phone, err := m.repository.PhoneForCustomer(ctx, update.Message.From.ID); err != nil {
 				response = WelcomePhrase
 			} else {
-				response = fmt.Sprintf("%s: %s", WelcomeAgainPhrase, phone)
+				response = fmt.Sprintf(WelcomeAgainPhrase, phone)
 			}
 		case msg == EmergenceShortcut, msg == DispatcherShortcut, msg == GuardShortcut:
 			phone, ok := m.phones[msg]
