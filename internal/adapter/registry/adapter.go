@@ -6,8 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/reindeer/magnifika_bot/pkg/builder"
-
+	"gitlab.com/gorib/criteria"
 	repository "gitlab.com/gorib/storage"
 	"gitlab.com/gorib/storage/sql"
 )
@@ -30,7 +29,7 @@ func (a *adapter) Get(ctx context.Context, code string) (string, error) {
 	defer rollback()
 	defer commit()
 
-	rec, err := sql.Get[record](ctx, builder.NewSqlite("select value from registry where code=?", &[]any{code}))
+	rec, err := sql.Get[record](ctx, sql.NewBuilder("registry").Where(criteria.And("code", "eq", code)).Sort("code"))
 	if err != nil {
 		if errors.Is(err, sqlDb.ErrNoRows) {
 			return "", fmt.Errorf("no key found: %s", code)
@@ -45,7 +44,7 @@ func (a *adapter) Save(ctx context.Context, code, value string) error {
 	defer rollback()
 	defer commit()
 
-	_, err := sql.Exec(ctx, builder.NewSqlite("insert into registry (code,value) values (?, ?) on conflict (code) do update set value=excluded.value", &[]any{code, value}))
+	_, err := sql.Exec(ctx, sql.NewBuilder("registry").Insert("code", "value").Values([][]any{{code, value}}).Conflict("code", "value"))
 	return err
 }
 
@@ -54,7 +53,7 @@ func (a *adapter) List(ctx context.Context) (map[string]string, error) {
 	defer rollback()
 	defer commit()
 
-	rows, err := sql.Select[[]*record](ctx, builder.NewSqlite("select * from registry", &[]any{}))
+	rows, err := sql.Select[[]*record](ctx, sql.NewBuilder("registry").Sort("code"))
 	if err != nil {
 		return nil, err
 	}

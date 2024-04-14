@@ -238,8 +238,8 @@ gitlab.com/gorib/ptr v0.0.0-20240316161432-b9dc3d78b03d h1:Rue9O2f/LANjpVkGcpFUg
 gitlab.com/gorib/ptr v0.0.0-20240316161432-b9dc3d78b03d/go.mod h1:c0ZgtD6K8BOmahNSFmi0w00yy3kLlSHnmoCy+oWxPfQ=
 gitlab.com/gorib/session v0.0.0-20240407123045-0c7ebec6b653 h1:SycQKkCTIoqeKy9jVMYFJflDr+pN5Fk/9OmjSrMGRss=
 gitlab.com/gorib/session v0.0.0-20240407123045-0c7ebec6b653/go.mod h1:cWx2sy2oeMgllJhzMRvv8TkJnUpqK1gvmUmXQjWJfXA=
-gitlab.com/gorib/storage v0.0.0-20240329183011-1d15b7fa366c h1:dL7SfDh72niDhXUEH/acu99PtDVH8xxeCKr/kBdL3D4=
-gitlab.com/gorib/storage v0.0.0-20240329183011-1d15b7fa366c/go.mod h1:Fj6wS1qoutOWA57dd4JCybKxQSdpGUi4Iy7q+Hz2t8g=
+gitlab.com/gorib/storage v0.0.0-20240414112747-e61a6c2f39c8 h1:Czw41FVxj/TQjYQQPnL087rTJpx72Ax7YD78E60z0fw=
+gitlab.com/gorib/storage v0.0.0-20240414112747-e61a6c2f39c8/go.mod h1:Fj6wS1qoutOWA57dd4JCybKxQSdpGUi4Iy7q+Hz2t8g=
 gitlab.com/gorib/try v0.0.0-20240316161432-4f44d463b7d2 h1:/23XcWAP/cyvaWMDmz4mY5IZkeWo44ZxLE6Xip+xqes=
 gitlab.com/gorib/try v0.0.0-20240316161432-4f44d463b7d2/go.mod h1:6xdxKdVGcjayPZvUWVZQzmvdtNJ2O8LkPpMlFzrBORg=
 gitlab.com/gorib/waffle v0.0.0-20240413185810-85aeac1744f4 h1:2qkjwFu6JkrWDDWHyYKSd6HKOyXKYKiKyujSjvIk9Lw=

@@ -72,9 +72,9 @@ func (c *command) Usage() error {
 			}
 			codes := maps.Keys(records)
 			slices.Sort(codes)
-			_, _ = os.Stderr.WriteString("Current records:")
+			_, _ = os.Stderr.WriteString("Current records:\n")
 			for _, code := range codes {
-				_, _ = os.Stderr.WriteString("\t" + code)
+				_, _ = os.Stderr.WriteString("\t" + code + "\n")
 			}
 		}
 		os.Exit(2)

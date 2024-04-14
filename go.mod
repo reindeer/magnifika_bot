@@ -8,10 +8,11 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/ncruces/go-sqlite3 v0.13.0
 	github.com/pborman/getopt/v2 v2.1.0
+	gitlab.com/gorib/criteria v0.0.0-20240316161432-f87bc77683f0
 	gitlab.com/gorib/di v0.0.0-20240329031159-2fffccee9c8e
 	gitlab.com/gorib/env v0.0.0-20240316161432-4496e0c1fa80
 	gitlab.com/gorib/pry v0.0.0-20240407123617-9e6ec781edce
-	gitlab.com/gorib/storage v0.0.0-20240329183011-1d15b7fa366c
+	gitlab.com/gorib/storage v0.0.0-20240414112747-e61a6c2f39c8
 	gitlab.com/gorib/waffle v0.0.0-20240413185810-85aeac1744f4
 	golang.org/x/exp v0.0.0-20240409090435-93d18d7e34b8
 	golang.org/x/oauth2 v0.19.0
@@ -43,7 +44,6 @@ require (
 	github.com/rs/zerolog v1.32.0 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/tetratelabs/wazero v1.7.0 // indirect
-	gitlab.com/gorib/criteria v0.0.0-20240316161432-f87bc77683f0 // indirect
 	gitlab.com/gorib/ptr v0.0.0-20240316161432-b9dc3d78b03d // indirect
 	gitlab.com/gorib/session v0.0.0-20240407123045-0c7ebec6b653 // indirect
 	gitlab.com/gorib/try v0.0.0-20240316161432-4f44d463b7d2 // indirect
