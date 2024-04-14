@@ -2,6 +2,7 @@ package config
 
 import (
 	"io/fs"
+	"path/filepath"
 
 	"github.com/reindeer/magnifika_bot/internal/adapter/application"
 	"github.com/reindeer/magnifika_bot/internal/adapter/phone"
@@ -41,7 +42,7 @@ func InitDi() {
 
 	di.Wire[sql.Db](sql.NewDb, di.Defaults(map[int]any{
 		0: "sqlite3",
-		1: "bot.sqlite",
+		1: filepath.Join(env.Value("DB_PATH", "."), "bot.sqlite"),
 	}))
 
 	di.Define(authenticator.New,
