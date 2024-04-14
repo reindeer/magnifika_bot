@@ -21,6 +21,7 @@ type User struct {
 
 type Registry interface {
 	Get(ctx context.Context, code string) (string, error)
+	Save(ctx context.Context, code, value string) error
 }
 
 type Authenticator interface {
@@ -64,6 +65,14 @@ func (a *adapter) Init(ctx context.Context) error {
 		}
 	} else {
 		token, err = a.authenticator.GetToken(ctx, config)
+		if err != nil {
+			return err
+		}
+		tb, err := json.Marshal(token)
+		if err != nil {
+			return err
+		}
+		err = a.registry.Save(ctx, "phone_validation.token", string(tb))
 		if err != nil {
 			return err
 		}
