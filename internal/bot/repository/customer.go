@@ -35,7 +35,7 @@ func (r *customerRepository) PhoneForCustomer(ctx context.Context, id int64) (st
 func (r *customerRepository) SaveCustomer(ctx context.Context, id int64, phone string) error {
 	ctx, commit, rollback := r.Begin(ctx)
 	defer rollback()
-	_, err := sql.Exec(ctx, sql.NewBuilder("customers").Insert("customer_id", "phone").Values([][]any{{id, phone}}).Conflict("customer_id", "phone"))
+	_, err := sql.Exec(ctx, sql.NewBuilder("customers").Insert("customer_id", "phone").Values([]any{id, phone}).Conflict("customer_id", "phone"))
 	if err != nil {
 		return err
 	}

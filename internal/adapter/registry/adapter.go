@@ -44,7 +44,7 @@ func (a *adapter) Save(ctx context.Context, code, value string) error {
 	defer rollback()
 	defer commit()
 
-	_, err := sql.Exec(ctx, sql.NewBuilder("registry").Insert("code", "value").Values([][]any{{code, value}}).Conflict("code", "value"))
+	_, err := sql.Exec(ctx, sql.NewBuilder("registry").Insert("code", "value").Values([]any{code, value}).Conflict("code", "value"))
 	return err
 }
 
