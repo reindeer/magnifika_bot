@@ -30,10 +30,11 @@ const (
 	NotFoundPhrase             = "УК не может найти тебя в списках. Свяжись с ними или укажи телефон, который зарегистрирован в УК."
 	PhoneChangedPhrase         = "Что-то пошло не так и УК перестала тебя узнавать. Свяжись с УК или пришли мне свой новый номер телефона."
 	ContactNotFoundPhrase      = "Что-то я потерял номер. Можешь попросить папу @tarandro помочь?"
-	UnknownPhrase              = "Извини, папа запрещает мне разговаривать с незнакомцами. Пришли мне свой номер телефона, зарегистрированный в УК."
+	UnknownPersonPhrase        = "Извини, папа запрещает мне разговаривать с незнакомцами. Пришли мне свой номер телефона, зарегистрированный в УК."
+	UnknownPhrase              = "Ой, что-то я не понял тебя. Что ты имеешь в виду?"
 	UnknownTelegramErrorPhrase = "Telegram говорит что-то мне непонятное. Спроси папу @tarandro, может быть от знает."
 	ApplicationFailedPhrase    = "Все было хорошо, но УК твою заявку не приняла. Не знаю, почему. Спроси папу @tarandro, он знает."
-	ApplicationSentPhrase      = "Готово! Заявку отправил."
+	ApplicationSentPhrase      = "Готово! Заявку отправил.\nВъезжать можно через ворота «%s»"
 	WaitForPlatePhrase         = "Скажи, кого надо пропустить, и я передам дальше.\nМне нужен полный номер с регионом.\nНапример а000аа78."
 )
 
@@ -174,7 +175,7 @@ func (m *botManagement) Setup(ctx context.Context) error {
 		case msg == ApplicationShortcut:
 			phone, err := m.repository.PhoneForCustomer(ctx, update.Message.From.ID)
 			if err != nil {
-				response = UnknownPhrase
+				response = UnknownPersonPhrase
 				return
 			}
 			gates, err := m.validator.ValidatePhone(ctx, phone)
@@ -193,10 +194,9 @@ func (m *botManagement) Setup(ctx context.Context) error {
 				return
 			}
 
-			response = fmt.Sprintf("%s\nВъезжать можно через ворота «%s»", ApplicationSentPhrase, strings.Join(gates, "» или «"))
-			return
+			response = fmt.Sprintf(ApplicationSentPhrase, strings.Join(gates, "» или «"))
 		default:
-			m.logger.Trace("Skip unknown message: " + msg)
+			response = UnknownPhrase
 		}
 	}))
 	if err != nil {
