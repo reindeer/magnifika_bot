@@ -4,21 +4,13 @@ import (
 	"context"
 	"os"
 
-	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
 	"github.com/pborman/getopt/v2"
 
-	"gitlab.com/gorib/pry"
 	"gitlab.com/gorib/waffle/app"
 )
 
 type Command interface {
 	app.Command
-}
-
-type handler struct {
-	models.BotCommand
-	handler func(ctx context.Context, b *bot.Bot, update *models.Update)
 }
 
 type BotManagement interface {
@@ -35,7 +27,6 @@ func New(base app.BaseCommand, management BotManagement) *command {
 type command struct {
 	app.BaseCommand
 	management BotManagement
-	logger     pry.Logger
 	cancel     func()
 }
 

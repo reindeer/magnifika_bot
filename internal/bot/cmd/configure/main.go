@@ -11,7 +11,6 @@ import (
 	"github.com/pborman/getopt/v2"
 	"golang.org/x/exp/maps"
 
-	"gitlab.com/gorib/pry"
 	"gitlab.com/gorib/waffle/app"
 )
 
@@ -34,7 +33,6 @@ func New(base app.BaseCommand, registry Registry) *command {
 type command struct {
 	app.BaseCommand
 	registry Registry
-	logger   pry.Logger
 	code     string
 }
 
