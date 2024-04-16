@@ -38,7 +38,7 @@ const (
 	WaitForPlatePhrase         = "Скажи, кого надо пропустить, и я передам дальше.\nМне нужен полный номер с регионом.\nНапример а000аа78."
 )
 
-type CustomerRepository interface {
+type CustomerAdapter interface {
 	PhoneForCustomer(ctx context.Context, id int64) (string, error)
 	SaveCustomer(ctx context.Context, id int64, phone string) error
 }
@@ -59,7 +59,7 @@ type Registry interface {
 
 func NewBotManagement(
 	registry Registry,
-	repository CustomerRepository,
+	repository CustomerAdapter,
 	validator PhoneAdapter,
 	application ApplicationAdapter,
 	logger pry.Logger,
@@ -75,7 +75,7 @@ func NewBotManagement(
 
 type botManagement struct {
 	logger      pry.Logger
-	repository  CustomerRepository
+	repository  CustomerAdapter
 	validator   PhoneAdapter
 	application ApplicationAdapter
 	registry    Registry

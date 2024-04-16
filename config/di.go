@@ -4,13 +4,13 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"github.com/reindeer/magnifika_bot/internal/adapter/customer"
 	"github.com/reindeer/magnifika_bot/internal/adapter/google"
 	"github.com/reindeer/magnifika_bot/internal/adapter/registry"
 	"github.com/reindeer/magnifika_bot/internal/bot/cmd/configure"
 	migrateCommand "github.com/reindeer/magnifika_bot/internal/bot/cmd/migrate"
 	"github.com/reindeer/magnifika_bot/internal/bot/cmd/serve"
 	"github.com/reindeer/magnifika_bot/internal/bot/management"
-	"github.com/reindeer/magnifika_bot/internal/bot/repository"
 
 	"gitlab.com/gorib/di"
 	"gitlab.com/gorib/env"
@@ -49,8 +49,8 @@ func InitDi() {
 		di.Alias[management.Registry](),
 	)
 
-	di.Define(phone.NewAdapter,
-		di.Alias[management.PhoneAdapter](),
+	di.Define(customer.NewAdapter,
+		di.Alias[management.CustomerAdapter](),
 	)
 
 	di.Define(google.NewAdapter,
@@ -58,7 +58,6 @@ func InitDi() {
 		di.Alias[management.PhoneAdapter](),
 	)
 
-	di.Wire[management.CustomerRepository](repository.NewCustomerRepository)
 	di.Wire[serve.BotManagement](management.NewBotManagement)
 	di.Wire[app.BaseCommand](func() app.BaseCommand { return app.NewCommand("bot:serve", "Start the bot") }, di.For[serve.Command]())
 	di.Wire[serve.Command](serve.New, di.Tag(app.CommandTag))
