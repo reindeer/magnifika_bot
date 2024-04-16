@@ -4,15 +4,13 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"github.com/reindeer/magnifika_bot/internal/adapter/application"
-	"github.com/reindeer/magnifika_bot/internal/adapter/phone"
+	"github.com/reindeer/magnifika_bot/internal/adapter/google"
 	"github.com/reindeer/magnifika_bot/internal/adapter/registry"
 	"github.com/reindeer/magnifika_bot/internal/bot/cmd/configure"
 	migrateCommand "github.com/reindeer/magnifika_bot/internal/bot/cmd/migrate"
 	"github.com/reindeer/magnifika_bot/internal/bot/cmd/serve"
 	"github.com/reindeer/magnifika_bot/internal/bot/management"
 	"github.com/reindeer/magnifika_bot/internal/bot/repository"
-	"github.com/reindeer/magnifika_bot/pkg/authenticator"
 
 	"gitlab.com/gorib/di"
 	"gitlab.com/gorib/env"
@@ -45,15 +43,9 @@ func InitDi() {
 		1: filepath.Join(env.Value("DB_PATH", "."), "bot.sqlite"),
 	}))
 
-	di.Define(authenticator.New,
-		di.Alias[phone.Authenticator](),
-		di.Alias[application.Authenticator](),
-	)
-
 	di.Define(registry.NewAdapter,
 		di.Alias[configure.Registry](),
-		di.Alias[phone.Registry](),
-		di.Alias[application.Registry](),
+		di.Alias[google.Registry](),
 		di.Alias[management.Registry](),
 	)
 
@@ -61,8 +53,9 @@ func InitDi() {
 		di.Alias[management.PhoneAdapter](),
 	)
 
-	di.Define(application.NewAdapter,
+	di.Define(google.NewAdapter,
 		di.Alias[management.ApplicationAdapter](),
+		di.Alias[management.PhoneAdapter](),
 	)
 
 	di.Wire[management.CustomerRepository](repository.NewCustomerRepository)
