@@ -19,8 +19,8 @@ const (
 
 	StartShortcut       = "/start"
 	ApplicationShortcut = "Заявка на въезд"
-	EmergenceShortcut   = "Аварийная служба"
-	DispatcherShortcut  = "Диспетчер"
+	EmergenceShortcut   = "Аварийно-диспетчерская служба"
+	DispatcherShortcut  = "Заявка на въезд по телефону"
 	GuardShortcut       = "Охрана"
 
 	WelcomePhrase              = "Привет! Давай познакомимся! Пришли мне свой номер телефона, зарегистрированный в УК, в формате +7xxxxxxxxxx.\nНо имей в виду, что я запомню твой телефон. Его сможет увидеть только папа @tarandro (если захочет).\nА еще я тут временно, пока @magnifikabot не научат работать с нашей очередью."
