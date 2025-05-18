@@ -1,4 +1,4 @@
-package management
+package bot
 
 import (
 	"context"
@@ -19,11 +19,11 @@ const (
 
 	StartShortcut       = "/start"
 	ApplicationShortcut = "Заявка на въезд"
-	EmergenceShortcut   = "Аварийно-диспетчерская служба"
+	EmergencyShortcut   = "Аварийно-диспетчерская служба"
 	DispatcherShortcut  = "Заявка на въезд по телефону"
 	GuardShortcut       = "Охрана"
 
-	WelcomePhrase              = "Привет! Давай познакомимся! Пришли мне свой номер телефона, зарегистрированный в УК, в формате +7xxxxxxxxxx.\nНо имей в виду, что я запомню твой телефон. Его сможет увидеть только папа @tarandro (если захочет).\nА еще я тут временно, пока @magnifikabot не научат работать с нашей очередью."
+	WelcomePhrase              = "Привет! Давай познакомимся! Пришли мне свой номер телефона, зарегистрированный в УК, в формате +7xxxxxxxxxx.\nНо имей в виду, что я запомню твой телефон. Его сможет увидеть только папа @tarandro (если захочет)."
 	WelcomeAgainPhrase         = "Привет, рад видеть тебя снова! Если у тебя новый телефон, пришли мне его. Сейчас у меня записан: %s"
 	ReadyForApplicationPhrase  = "Готово! Теперь можешь создавать заявки."
 	OopsPhrase                 = "Ой, кажется я поломался! Позовите папу @tarandro!"
@@ -34,34 +34,29 @@ const (
 	UnknownPhrase              = "Ой, что-то я не понял тебя. Что ты имеешь в виду?"
 	UnknownTelegramErrorPhrase = "Telegram говорит что-то мне непонятное. Спроси папу @tarandro, может быть от знает."
 	ApplicationFailedPhrase    = "Все было хорошо, но УК твою заявку не приняла. Не знаю, почему. Спроси папу @tarandro, он знает."
-	ApplicationSentPhrase      = "Готово! Заявку отправил.\nВъезжать можно через ворота «%s»."
+	ApplicationSentPhrase      = "Готово! Заявку отправил.\nВъезжать можно только с Магнитогорской улицы."
 	WaitForPlatePhrase         = "Скажи, кого надо пропустить, и я передам дальше.\nМне нужен полный номер с регионом.\nНапример а000аа78."
 )
 
-type CustomerAdapter interface {
+type CustomerRepository interface {
 	PhoneForCustomer(ctx context.Context, id int64) (string, error)
 	SaveCustomer(ctx context.Context, id int64, phone string) error
 }
 
-type PhoneAdapter interface {
-	Init(ctx context.Context) error
+type PhoneRepository interface {
 	ValidatePhone(ctx context.Context, phone string) ([]string, error)
 }
 
-type ApplicationAdapter interface {
-	Init(ctx context.Context) error
+type ApplicationService interface {
 	Application(ctx context.Context, phone, plate string, gates []string) error
 }
 
-type Registry interface {
-	Get(ctx context.Context, code string) (string, error)
-}
-
 func NewBotManagement(
-	registry Registry,
-	repository CustomerAdapter,
-	validator PhoneAdapter,
-	application ApplicationAdapter,
+	phones map[string]string,
+	token string,
+	repository CustomerRepository,
+	validator PhoneRepository,
+	application ApplicationService,
 	logger pry.Logger,
 ) (*botManagement, error) {
 	return &botManagement{
@@ -69,28 +64,32 @@ func NewBotManagement(
 		repository:  repository,
 		validator:   validator,
 		application: application,
-		registry:    registry,
+		phones:      phones,
+		token:       token,
 	}, nil
 }
 
 type botManagement struct {
 	logger      pry.Logger
-	repository  CustomerAdapter
-	validator   PhoneAdapter
-	application ApplicationAdapter
-	registry    Registry
+	repository  CustomerRepository
+	validator   PhoneRepository
+	application ApplicationService
 	phones      map[string]string
 	token       string
 }
 
 func (m *botManagement) Setup(ctx context.Context) error {
-	err := m.init(ctx)
-	if err != nil {
-		return err
+	for phone, value := range m.phones {
+		if value == "" {
+			return fmt.Errorf("phone %s is empty", phone)
+		}
+	}
+	if m.token == "" {
+		return fmt.Errorf("telegram token is required")
 	}
 
 	keyboard := &models.ReplyKeyboardMarkup{
-		Keyboard:       [][]models.KeyboardButton{{{Text: ApplicationShortcut}}, {{Text: EmergenceShortcut}}, {{Text: DispatcherShortcut}}, {{Text: GuardShortcut}}},
+		Keyboard:       [][]models.KeyboardButton{{{Text: ApplicationShortcut}}, {{Text: EmergencyShortcut}}, {{Text: DispatcherShortcut}}, {{Text: GuardShortcut}}},
 		IsPersistent:   true,
 		ResizeKeyboard: true,
 	}
@@ -125,7 +124,7 @@ func (m *botManagement) Setup(ctx context.Context) error {
 			} else {
 				response = fmt.Sprintf(WelcomeAgainPhrase, phone)
 			}
-		case msg == EmergenceShortcut, msg == DispatcherShortcut, msg == GuardShortcut:
+		case msg == EmergencyShortcut, msg == DispatcherShortcut, msg == GuardShortcut:
 			phone, ok := m.phones[msg]
 			if !ok {
 				response = ContactNotFoundPhrase
@@ -194,7 +193,7 @@ func (m *botManagement) Setup(ctx context.Context) error {
 				return
 			}
 
-			response = fmt.Sprintf(ApplicationSentPhrase, strings.Join(gates, "» или «"))
+			response = ApplicationSentPhrase
 		default:
 			response = UnknownPhrase
 		}
@@ -204,38 +203,5 @@ func (m *botManagement) Setup(ctx context.Context) error {
 	}
 
 	b.Start(ctx)
-	return nil
-}
-
-func (m *botManagement) init(ctx context.Context) error {
-	err := m.application.Init(ctx)
-	if err != nil {
-		return err
-	}
-	err = m.validator.Init(ctx)
-	if err != nil {
-		return err
-	}
-
-	m.phones = make(map[string]string, 3)
-	m.phones[EmergenceShortcut], err = m.registry.Get(ctx, EmergenceShortcut)
-	if err != nil {
-		return err
-	}
-	m.phones[DispatcherShortcut], err = m.registry.Get(ctx, DispatcherShortcut)
-	if err != nil {
-		return err
-	}
-
-	m.phones[GuardShortcut], err = m.registry.Get(ctx, GuardShortcut)
-	if err != nil {
-		return err
-	}
-
-	m.token, err = m.registry.Get(ctx, "telegram.token")
-	if err != nil {
-		return err
-	}
-
 	return nil
 }

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tobi696/googlesheetsparser"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -16,15 +15,34 @@ import (
 	"gitlab.com/gorib/pry"
 )
 
-type Registry interface {
-	Get(ctx context.Context, code string) (string, error)
-	Save(ctx context.Context, code, value string) error
-}
+func NewAdapter(
+	credentials, token string,
+	applicationSheetId, validationSheetId string,
+	validationSheetNames []string,
+	logger pry.Logger,
+) (*adapter, error) {
+	var config *oauth2.Config
+	if credentials != "" {
+		c, err := google.ConfigFromJSON([]byte(credentials), sheets.SpreadsheetsScope)
+		if err != nil {
+			return nil, err
+		}
+		config = c
+	}
+	var t *oauth2.Token
+	if token != "" {
+		if err := json.Unmarshal([]byte(token), &t); err != nil {
+			return nil, fmt.Errorf("unable to parse application token: %w", err)
+		}
+	}
 
-func NewAdapter(registry Registry, logger pry.Logger) (*adapter, error) {
 	return &adapter{
-		logger:   logger,
-		registry: registry,
+		logger:               logger,
+		token:                t,
+		applicationSheetId:   applicationSheetId,
+		validationSheetId:    validationSheetId,
+		validationSheetNames: validationSheetNames,
+		config:               config,
 	}, nil
 }
 
@@ -34,96 +52,80 @@ type User struct {
 
 type adapter struct {
 	logger               pry.Logger
-	registry             Registry
-	service              *sheets.Service
+	config               *oauth2.Config
+	token                *oauth2.Token
 	applicationSheetId   string
 	validationSheetId    string
 	validationSheetNames []string
 }
 
-func (a *adapter) Init(ctx context.Context) error {
-	creds, err := a.registry.Get(ctx, "google.credentials")
-	if err != nil {
-		return err
+func (a *adapter) Login(ctx context.Context) error {
+	if a.config == nil {
+		return fmt.Errorf("no google credentials provided")
 	}
-
-	config, err := google.ConfigFromJSON([]byte(creds), sheets.SpreadsheetsScope)
-	if err != nil {
-		return err
-	}
-
 	var token *oauth2.Token
-	t, err := a.registry.Get(ctx, "google.token")
-	if err == nil {
-		err = json.Unmarshal([]byte(t), &token)
-		if err != nil {
-			return fmt.Errorf("unable to parse application token: %w", err)
-		}
-	} else {
-		authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-		fmt.Printf("Go to the following link in your browser then type the authorization code: \n%v\n", authURL)
+	authURL := a.config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+	fmt.Printf("Go to the following link in your browser then type the authorization code: \n%v\n", authURL)
 
-		var authCode string
-		if _, err := fmt.Scan(&authCode); err != nil {
-			return fmt.Errorf("unable to read authorization code: %w", err)
-		}
+	scan := make(chan struct {
+		Code  string
+		Error error
+	})
+	go func() {
+		var code string
+		_, err := fmt.Scan(&code)
+		scan <- struct {
+			Code  string
+			Error error
+		}{Code: code, Error: err}
+	}()
 
-		token, err = config.Exchange(ctx, authCode)
-		if err != nil {
-			return err
+	var authCode string
+	select {
+	case <-ctx.Done():
+		return nil
+	case s := <-scan:
+		if s.Error != nil {
+			return fmt.Errorf("unable to read authorization code: %w", s.Error)
 		}
-		tb, err := json.Marshal(token)
-		if err != nil {
-			return err
-		}
-		err = a.registry.Save(ctx, "google.token", string(tb))
-		if err != nil {
-			return err
-		}
+		authCode = s.Code
 	}
 
-	a.service, err = sheets.NewService(ctx, option.WithHTTPClient(config.Client(ctx, token)))
+	token, err := a.config.Exchange(ctx, authCode)
+	if err != nil {
+		return err
+	}
+	tb, err := json.Marshal(token)
 	if err != nil {
 		return err
 	}
 
-	a.applicationSheetId, err = a.registry.Get(ctx, "application.sheet")
-	if err != nil {
-		return err
-	}
+	fmt.Printf("\n\nAdd to your env file:\nGOOGLE_TOKEN=%s\n", tb)
 
-	a.validationSheetId, err = a.registry.Get(ctx, "phone_validation.sheet")
-	if err != nil {
-		return err
-	}
-
-	value, err := a.registry.Get(ctx, "phone_validation.sheet_names")
-	if err != nil {
-		return err
-	}
-	var names []string
-	err = json.Unmarshal([]byte(value), &names)
-	if err != nil {
-		return err
-	}
-	a.validationSheetNames = names
 	return nil
 }
 
 func (a *adapter) ValidatePhone(ctx context.Context, phone string) ([]string, error) {
+	if a.validationSheetId == "" {
+		return nil, fmt.Errorf("no phone validation sheet id")
+	}
+	service, err := a.service(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	phone = strings.TrimLeft(phone, "+")
 	var gates []string
 	for _, gate := range a.validationSheetNames {
-		users, err := googlesheetsparser.ParseSheetIntoStructSlice[User](googlesheetsparser.Options{
-			Service:       a.service,
-			SpreadsheetID: a.validationSheetId,
-			SheetName:     gate,
-		}.Build())
+		values, err := service.Spreadsheets.Values.Get(a.validationSheetId, gate+"!A:A").Do()
 		if err != nil {
 			return nil, err
 		}
-		for _, user := range users {
-			if user.A == phone {
+		for _, row := range values.Values {
+			if len(row) == 0 {
+				continue
+			}
+			if row[0] == phone {
 				gates = append(gates, gate)
 				break
 			}
@@ -134,25 +136,33 @@ func (a *adapter) ValidatePhone(ctx context.Context, phone string) ([]string, er
 }
 
 func (a *adapter) Application(ctx context.Context, phone, plate string, gates []string) error {
+	if a.applicationSheetId == "" {
+		return fmt.Errorf("no application sheet id")
+	}
+	service, err := a.service(ctx)
+	if err != nil {
+		return err
+	}
+
 	date := time.Now().Format("02.01")
 
-	writeRange := fmt.Sprintf("%s!A:E", date)
+	writeRange := date + "!A:E"
 	values := &sheets.ValueRange{
 		Values: [][]any{
 			{strings.Join(gates, "\n"), "", "", plate, phone},
 		},
 	}
 
-	err := a.send(ctx, writeRange, values)
+	err = a.send(ctx, service, writeRange, values)
 	if err != nil && strings.Contains(err.Error(), "googleapi: Error 400: Unable to parse range:") {
-		if err = a.createSheet(ctx, date); err == nil {
-			err = a.send(ctx, writeRange, values)
+		if err = a.createSheet(ctx, service, date); err == nil {
+			err = a.send(ctx, service, writeRange, values)
 		}
 	}
 	return err
 }
 
-func (a *adapter) createSheet(ctx context.Context, name string) error {
+func (a *adapter) createSheet(ctx context.Context, service *sheets.Service, name string) error {
 	req := sheets.Request{
 		AddSheet: &sheets.AddSheetRequest{
 			Properties: &sheets.SheetProperties{
@@ -165,14 +175,24 @@ func (a *adapter) createSheet(ctx context.Context, name string) error {
 		Requests: []*sheets.Request{&req},
 	}
 
-	_, err := a.service.Spreadsheets.BatchUpdate(a.applicationSheetId, rbb).Context(ctx).Do()
+	_, err := service.Spreadsheets.BatchUpdate(a.applicationSheetId, rbb).Context(ctx).Do()
 	return err
 }
 
-func (a *adapter) send(ctx context.Context, range_ string, values *sheets.ValueRange) error {
-	_, err := a.service.Spreadsheets.Values.Append(a.applicationSheetId, range_, values).
+func (a *adapter) send(ctx context.Context, service *sheets.Service, range_ string, values *sheets.ValueRange) error {
+	_, err := service.Spreadsheets.Values.Append(a.applicationSheetId, range_, values).
 		ValueInputOption("RAW").
 		Context(ctx).
 		Do()
 	return err
+}
+
+func (a *adapter) service(ctx context.Context) (*sheets.Service, error) {
+	if a.config == nil {
+		return nil, fmt.Errorf("no google credentials provided")
+	}
+	if a.token == nil {
+		return nil, fmt.Errorf("empty token, please run google:login command")
+	}
+	return sheets.NewService(ctx, option.WithHTTPClient(a.config.Client(ctx, a.token)))
 }
