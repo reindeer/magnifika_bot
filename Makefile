@@ -1,4 +1,5 @@
-all: generate tidy
+all: generate
+	@go mod tidy
 	@go test -cover ./...
 	@[ -d cmd ] && go build -ldflags "-w" -o bin/ ./cmd/...
 	@go test -tags integration -c -o bin/test || true
@@ -10,8 +11,6 @@ audit:
 generate:
 	@go generate ./...
 
-tidy:
-	@go mod tidy
-
 be7000:
+	@go mod tidy
 	docker build --build-arg GOOS=linux --build-arg GOARCH=arm64 --platform=linux/arm64 . -t bot:arm64

@@ -1,8 +1,9 @@
 FROM            golang:1.23-alpine AS build
 WORKDIR         /app
 RUN             apk add file protoc protobuf-dev build-base git grpc
+COPY            go.mod go.sum ./
+RUN             go mod download
 COPY            . .
-RUN             make tidy
 RUN             make
 
 FROM            alpine:3.20 AS app
