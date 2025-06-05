@@ -28,7 +28,7 @@ func (r *adapter) PhoneForCustomer(ctx context.Context, id int64) (string, error
 
 func (r *adapter) SaveCustomer(ctx context.Context, id int64, phone string) error {
 	fields, values := newStoredCustomer(id, phone).Inserts()
-	_, err := sql.Exec(ctx, sql.NewBuilder("customers").Insert(fields...).Values(values...).Conflict(fields[0], fields[1]))
+	_, err := r.repo.Get(ctx, sql.NewBuilder("customers").Insert(fields...).Values(values...).Conflict(fields[0], fields[1]))
 	if err != nil {
 		return err
 	}
