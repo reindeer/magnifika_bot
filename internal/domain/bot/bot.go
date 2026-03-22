@@ -111,7 +111,7 @@ func (m *botManagement) Setup(ctx context.Context) error {
 					ReplyMarkup: keyboard,
 				})
 				if err != nil {
-					m.logger.Error(err, pry.Ctx(ctx))
+					m.logger.Error(err, pry.Ctx(ctx), pry.Field("message", update))
 				}
 
 			}
