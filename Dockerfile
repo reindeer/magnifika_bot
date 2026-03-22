@@ -1,4 +1,4 @@
-FROM            golang:1.23-alpine AS build
+FROM            golang:1.25-alpine AS build
 WORKDIR         /app
 RUN             apk add file protoc protobuf-dev build-base git grpc
 COPY            go.mod go.sum ./
