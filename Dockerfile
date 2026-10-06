@@ -1,14 +1,13 @@
-FROM            golang:1.25-alpine AS build
+FROM            golang:1.27-alpine AS build
 WORKDIR         /app
-RUN             apk add file protoc protobuf-dev build-base git grpc
+RUN             apk add make
 COPY            go.mod go.sum ./
 RUN             go mod download
 COPY            . .
-RUN             make
+RUN             make build
 
-FROM            alpine:3.20 AS app
-ARG             COMMAND=bot:serve
-ENV             COMMAND=$COMMAND
+FROM            alpine:3.22 AS app
+RUN             apk add --no-cache ca-certificates tzdata
 COPY            --from=build /app/bin/* /bin/
-VOLUME          /app
-CMD             app $COMMAND
+WORKDIR         /app
+ENTRYPOINT      ["app"]

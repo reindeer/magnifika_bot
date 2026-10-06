@@ -1,0 +1,8 @@
+.idea/
+.env*
+*.sqlite
+bin/
+data/
+app.arm
+Dockerfile
+docker-compose.yml

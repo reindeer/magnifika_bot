@@ -1,16 +1,23 @@
-all: generate
-	@go mod tidy
-	@go test -cover ./...
-	@[ -d cmd ] && go build -ldflags "-w" -o bin/ ./cmd/...
-	@go test -tags integration -c -o bin/test || true
+.PHONY: all audit .tidy generate test build be7000
+
+all: .tidy generate build
 
 audit:
 	@which golangci-lint >/dev/null || (echo "Cannot run linters. Have you installed golangci-lint?" && false)
 	@golangci-lint run
 
+test:
+	@go test -race ./...
+
+.tidy:
+	@go mod tidy
+
 generate:
 	@go generate ./...
 
+build:
+	@CGO_ENABLED=0 go build -ldflags "-w" -o bin/ ./cmd/...
+
 be7000:
 	@go mod tidy
-	docker build --build-arg GOOS=linux --build-arg GOARCH=arm64 --platform=linux/arm64 . -t bot:arm64
+	docker build --platform=linux/arm64 . -t bot:arm64

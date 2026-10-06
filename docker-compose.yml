@@ -1,0 +1,32 @@
+x-surrogate: &surrogate
+  build:
+    context: .
+    target: app
+  image: surrogate:latest
+  env_file:
+    - path: .env
+      required: false
+  volumes:
+    - ./data:/app
+  restart: always
+
+services:
+  surrogate:
+    <<: *surrogate
+    environment:
+      TZ: Europe/Moscow
+      SERVICE: magnifika_bot
+    depends_on:
+      surrogate-migration:
+        condition: service_completed_successfully
+    command:
+      - bot:serve
+
+  surrogate-migration:
+    <<: *surrogate
+    restart: "no"
+    environment:
+      TZ: Europe/Moscow
+      SERVICE: magnifika_bot_migration
+    command:
+      - migrate
